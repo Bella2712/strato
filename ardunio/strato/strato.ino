@@ -9,9 +9,9 @@
 #include <MPU9250.h>
 
 
-#define LED0 1
-#define LED1 2
-#define gpsSerial Serial3
+#define LED0 PB0
+#define LED1 PB1
+#define gpsSerial Serial1
 char filename[16];
 TinyGPS gpsDecoder;
 Adafruit_BME280 BME0; 
@@ -88,8 +88,9 @@ static void Runtime(File& fd) {
 
 static void hang() {
     Serial.println("System halted.");
-    while (true)
-        ;
+    LED0_on();
+    LED1_on();
+    while (true);
 }
 
 static void LED0_on(){
@@ -228,21 +229,27 @@ static bool pollGPS() {
 }
 
 static void gpsdump(File& fd) {
-    unsigned long age;
-    int year;
-    byte month, day, hour, minute, second, hundredths;
+    unsigned long age = 0;
+    int year = 0;
+    byte month = 0;
+    byte day = 0;
+    byte hour = 0;
+    byte minute = 0;
+    byte second = 0;
+    byte hundredths = 0;
     gpsDecoder.crack_datetime(&year, &month, &day, &hour, &minute, &second, &hundredths, &age);
 
-    float flat, flon;
+    float flat = 0;
+    float flon = 0;
     gpsDecoder.f_get_position(&flat, &flon, &age);
 
     float altitude = gpsDecoder.f_altitude();
     float speed = gpsDecoder.f_speed_kmph(); 
     unsigned satellites = gpsDecoder.satellites();
 
-    char date[11];
+    char date[11] = { 0 };
     sprintf(date, "%04d/%02d/%02d", year, month, day);
-    char time[12];
+    char time[12] = { 0 };
     sprintf(time, "%02d:%02d:%02d.%02d",
         (hour + 1), /* UTC +01:00 Europe/Berlin */
         minute, second, hundredths
@@ -262,8 +269,11 @@ static void gpsdump(File& fd) {
     Serial.print(" kmph: ");
     printFloat(Serial, speed, 2);      
     Serial.print(" Satellites: ");
-    Serial.println(satellites);
-
+    if (satellites != TinyGPS::GPS_INVALID_SATELLITES) { 
+        Serial.println(satellites);
+    } else {
+        Serial.println("unknown");
+    }
     printCSV(fd, date);
     printCSV(fd, time);
     printCSV(fd, flat, 5);
@@ -367,7 +377,7 @@ void setup() {
 
     Serial.begin(9600);
     gpsSerial.begin(9600);
-    SD.begin(4);
+    SD.begin(PB4);
     
     Serial.println(F("BME280 test"));
     generateFilename();
