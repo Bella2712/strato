@@ -1,12 +1,12 @@
-#include <TinyGPS.h>
-#include <SoftwareSerial.h>
-#include <BH1750FVI.h>
-#include <Wire.h>
-#include <SPI.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
-#include <SD.h>
-#include <MPU9250.h>
+#include <TinyGPS.h>			// https://www.instructables.com/id/How-to-Communicate-Neo-6M-GPS-to-Arduino/
+#include <SoftwareSerial.h>		// Standart
+//#include <BH1750FVI.h>
+#include <Wire.h>				// Standart
+#include <SPI.h>				// Standart
+#include <Adafruit_Sensor.h>	// Standart
+#include <Adafruit_BME280.h>	// https://github.com/adafruit/Adafruit_BME280_Library
+#include <SD.h>					// Standart
+#include <MPU9250.h>			// https://github.com/bolderflight/MPU9250
 
 
 #define LED0 PB0
@@ -17,7 +17,7 @@ TinyGPS gpsDecoder;
 Adafruit_BME280 BME0; 
 Adafruit_BME280 BME1;
 MPU9250 IMU(Wire,0x68);
-BH1750FVI LightSensor;
+//BH1750FVI LightSensor;
 
 static void gpsdump(File& fd);
 static void printValues();
@@ -34,83 +34,87 @@ template <typename T> static void printCSV(File& fd, T x) {
 }
 
 static void printCSV(File& fd, float x, int digits) {
-    printFloat(fd, x, digits);
+	printFloat(fd, x, digits);
     fd.print(";");
 }
 
-template <typename Out> static void printFloat(Out& out, double number, int digits) {
-  // Handle negative numbers
+template <typename Out> static void printFloat(Out& out, double number, uint8_t digits) {
+    // Handle negative numbers
     if (number < 0.0) {
         out.print('-');
         number = - number;
     }
 
-  // Round correctly so that print(1.999, 2) prints as "2.00"
-  double rounding = 0.5;
-  for (uint8_t i = 0; i < digits; ++i)
-      rounding /= 10.0;
-  number += rounding;
+    // Round correctly so that print(1.999, 2) prints as "2.00"
+    {
+        double rounding = 0.5;
+        for (uint8_t i = 0; i < digits; ++i) {
+            rounding /= 10.0;
+		}
+        number += rounding;
+    }
 
-  // Extract the integer part of the number and print it
-  unsigned long int_part = (unsigned long)number;
-  double remainder = number - (double)int_part;
-  out.print(int_part);
-  if (digits > 0) {  
-    out.print("."); 
-  }
+    // Extract the integer part of the number and print it
+    uint32_t int_part = (uint32_t) number;
+    double remainder = number - (double) int_part;
+	
+    out.print(int_part);
+    if (digits > 0) {  
+        out.print("."); 
+    }
   
-  // Extract digits from the remainder one at a time
-      while (digits-- > 0) {
+    // Extract digits from the remainder one at a time
+    while (digits-- > 0) {
         remainder *= 10.0;
-        int toPrint = int(remainder);
+        uint8_t toPrint = (uint8_t) remainder;
         out.print(toPrint);  
     }
 }
 
 static void generateFilename() {
-    unsigned n = 0;
+	unsigned n = 0;
     do {
         snprintf(filename, sizeof(filename), "data%03d.csv", n); // includes a three-digit sequence number in the file name
-        ++n;
+		++n;
     }
-        while(SD.exists(filename));
-        Serial.print("Writing to ");
-        Serial.println(filename);
+    while(SD.exists(filename));
+    Serial.print("Writing to ");
+    Serial.println(filename);
 }
 
 static void Runtime(File& fd) { 
-  unsigned long runtime = millis();
-  Serial.print("Runtime = ");
-  Serial.println(runtime); 
-  fd.print(runtime);
-  fd.print(";");
+	unsigned long runtime = millis();
+	Serial.print("Runtime = ");
+	Serial.println(runtime); 
+	fd.print(runtime);
+	fd.print(";");
 }
 
 static void hang() {
     Serial.println("System halted.");
-    LED0_on();
+	LED0_on();
     LED1_on();
     while (true);
 }
 
 static void LED0_on(){
-    digitalWrite(LED0, 0);  
+	digitalWrite(LED0, 0);  
 }
 static void LED1_on(){
     digitalWrite(LED1, 0);
 }
 
 static void LED0_off(){
-  digitalWrite(LED0, 1);
+	digitalWrite(LED0, 1);
 }
 static void LED1_off(){
-  digitalWrite(LED1, 1);
+	digitalWrite(LED1, 1);
 }
 
 //////////////  BME 0 & 1 ///// Start ////////////////
 
 static void printBMEValue(uint8_t bmeIdx, const char *name, float value, const char *unit) {
-    Serial.print(name);
+	Serial.print(name);
     Serial.print("_BME_");
     Serial.print(bmeIdx);
     Serial.print(" = ");
@@ -121,7 +125,7 @@ static void printBMEValue(uint8_t bmeIdx, const char *name, float value, const c
 
 
 static void printBME(File& fd, Adafruit_BME280& bme, uint8_t bmeIdx) {
-    float temperature = bme.readTemperature();
+	float temperature = bme.readTemperature();
     float pressure = bme.readPressure() / 100.0f;
     float humidity = bme.readHumidity();
 
@@ -141,7 +145,7 @@ static void printIMUValue(const char* name, float value, const char *unit) {
     Serial.print(name);
     Serial.print(" ");
     Serial.print("IMU");
-    Serial.print(" = ");
+	Serial.print(" = ");
     Serial.print(value);
     Serial.print(" ");
     Serial.println(unit);  
@@ -151,7 +155,7 @@ static void printIMU(File& fd, MPU9250& IMU) {
     IMU.readSensor();
     float ax = IMU.getAccelX_mss();
     float ay = IMU.getAccelY_mss();
-    float az = IMU.getAccelZ_mss();
+	float az = IMU.getAccelZ_mss();
 
     float rx = IMU.getGyroX_rads();
     float ry = IMU.getGyroY_rads();
@@ -166,7 +170,7 @@ static void printIMU(File& fd, MPU9250& IMU) {
     printIMUValue("AccelZ", az, "mss");
 
     printIMUValue("GyroX", rx, "rads");    
-    printIMUValue("GyroY", ry, "rads");
+	printIMUValue("GyroY", ry, "rads");
     printIMUValue("GyroZ", rz, "rads");
 
     printIMUValue("MagX", bx, "uT");
@@ -187,11 +191,12 @@ static void printIMU(File& fd, MPU9250& IMU) {
 }
 //////////////  IMU ///// End ////////////////
 
+/*
 //////////////  Light Sensor ///// Start ////////////////
 static void printBH1750Value(const char *name, uint16_t value, const char *unit) {
     Serial.print(name);
     Serial.print(" ");
-    Serial.print("BH1750");
+	Serial.print("BH1750");
     Serial.print(" = ");
     Serial.print(value);
     Serial.print(" ");
@@ -199,53 +204,38 @@ static void printBH1750Value(const char *name, uint16_t value, const char *unit)
 }
 
 static void printBH1750(File& fd) {
-    uint16_t lux = LightSensor.GetLightIntensity();
+	uint16_t lux = LightSensor.GetLightIntensity();
 
     printBH1750Value("Light", lux, "lx");
     printCSV(fd, lux);
 }
-//////////////  Light Sensor ///// End ////////////////
-static void printLightValue(const char *name, int value) {
-    Serial.print(name);
-    Serial.print(" ");
-    Serial.print("Light");
-    Serial.print(" = ");
-    Serial.print(value);
-      
-}
-
-static void Light(File& fd){
-  int Light = analogRead(A1);
-
-  printLightValue("Light2", Light);
-  printCSVint(fd, Light);
-}
-
+//////////////  Light Sensor ///// End ////////////////  
+*/
 
 //////////////  GPS Data ///// Start ////////////////
 
 static bool pollGPS() {
-   const unsigned long timeout = 5000; // milliseconds
-   bool newdata = false;
+	const unsigned long timeout = 5000; // milliseconds
+	bool newdata = false;
    
-   unsigned long start = millis();
-   while (millis() - start < timeout) {
-       if (gpsSerial.available()) {
-           char c = gpsSerial.read();
-           // Serial.print(c);  // uncomment to see raw GPS data
-           if (gpsDecoder.encode(c)) {
-               newdata = true;
-               break;  // uncomment to print new data immediately!
-           }
-       }
-   }
+	unsigned long start = millis();
+	while (millis() - start < timeout) {
+		if (gpsSerial.available()) {
+			char c = gpsSerial.read();
+			// Serial.print(c);  // uncomment to see raw GPS data
+			if (gpsDecoder.encode(c)) {
+				newdata = true;
+				break;  // uncomment to print new data immediately!
+			}
+		}
+	}
    
-   return newdata;
+	return newdata;
 }
 
 static void gpsdump(File& fd) {
-    unsigned long age = 0;
-    int year = 0;
+	unsigned long age = 0;
+	int year = 0;
     byte month = 0;
     byte day = 0;
     byte hour = 0;
@@ -268,7 +258,7 @@ static void gpsdump(File& fd) {
     sprintf(time, "%02d:%02d:%02d.%02d",
         (hour + 1), /* UTC +01:00 Europe/Berlin */
         minute, second, hundredths
-    ); 
+	); 
 
     Serial.print("Date: ");
     Serial.println(date);
@@ -287,8 +277,9 @@ static void gpsdump(File& fd) {
     if (satellites != TinyGPS::GPS_INVALID_SATELLITES) { 
         Serial.println(satellites);
     } else {
-        Serial.println("unknown");
-    }
+		Serial.println("unknown");
+	}
+	
     printCSV(fd, date);
     printCSV(fd, time);
     printCSV(fd, flat, 5);
@@ -308,8 +299,8 @@ static void ubxFinalize(byte *data, uint8_t size) {
 
     byte ck1 = 0;
     byte ck2 = 0;
-    for (uint8_t i = 2; i < size - 2; ++i) {
-        ck1 += data[i];
+	for (uint8_t i = 2; i < size - 2; ++i) {
+		ck1 += data[i];
         ck2 += ck1;
     }
 
@@ -320,12 +311,13 @@ static void ubxFinalize(byte *data, uint8_t size) {
 static void ubxIO(byte *data, uint8_t size) {
     ubxFinalize(data, size);
     byte ack[] = {
-        0xB5, 0x62,
+		0xB5, 0x62,
         0x05, 0x01, // ack
         2, 0,
         data[2], data[3],
         0, 0
     };
+	
     ubxFinalize(ack, sizeof(ack));
 
     for (uint8_t attempt = 0; attempt < 10; ++attempt) {
@@ -338,7 +330,7 @@ static void ubxIO(byte *data, uint8_t size) {
         uint8_t pos = 0;
         const unsigned long TIMEOUT = 3000;
         while (millis() - start < TIMEOUT) {
-            if (gpsSerial.available()) {
+			if (gpsSerial.available()) {
                 byte b = gpsSerial.read();
                 if (b == ack[pos]) {
                     ++pos;
@@ -387,10 +379,8 @@ static void setGPSFlightMode() {
 //////////////  Flight Mode ///// End ///////////
 
 void setup() {
-    pinMode (LED0, OUTPUT);
+	pinMode (LED0, OUTPUT);
     pinMode (LED1, OUTPUT);
-    pinMode (A1, INPUT);
-
 
     Serial.begin(9600);
     gpsSerial.begin(9600);
@@ -407,8 +397,7 @@ void setup() {
             "AccelX_mss;AccelY_mss;AccelZ_mss;"
             "GyroX_rads;GyroY_rads;GyroZ_rads;"
             "MagX_uT;MagY_uT;MagZ_uT;"
-            "lux_lx;"
-            "Light;"
+            //"lux_lx;"
             "millis_ms;"
             "Jahr/Monat/Tag;Stunden:Minuten:Sekunden;"
             "f_lat;f_lon;f_altitude;f_kmph;Sateliten"
@@ -420,11 +409,11 @@ void setup() {
         bool bme0Status = BME0.begin();  
         bool bme1Status = BME1.begin(0x77);
         int statusIMU = IMU.begin();
-        LightSensor.begin();
+        //LightSensor.begin();
         
         // Show BMEs on the serial monitor
         if (!bme0Status) {
-            Serial.println("Could not find a valid BME280 Nr. 0 sensor, check wiring!");
+			Serial.println("Could not find a valid BME280 Nr. 0 sensor, check wiring!");
             hang();
         }
         if (!bme1Status) {
@@ -437,12 +426,12 @@ void setup() {
         }
     }
 
-    setGPSFlightMode();
+	setGPSFlightMode();
     Serial.println("-- Default Test --");
 } // END setup
 
 void loop() { 
-    LED0_on();
+	LED0_on();
     bool newdata = pollGPS();
     LED0_off();
     // on = DigitalWrite(0), off = DigitalWrite(1)
@@ -451,8 +440,7 @@ void loop() {
     printBME(fd, BME0, 0);
     printBME(fd, BME1, 1);
     printIMU(fd, IMU);
-    printBH1750(fd);
-    Light(fd);
+    //printBH1750(fd);
     Runtime(fd);
    
     if (newdata) {
