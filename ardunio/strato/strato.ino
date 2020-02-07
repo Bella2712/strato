@@ -25,10 +25,10 @@ static void setGPSFlightMode();
 
 // Arduino tool does not generate forward declarations of template functions properly.
 // An explicit forward declaration preceding all executable code stops Arduino from these attempts. 
-//template <typename T> static void printCSV(File& fd, T x);
+template <typename T> static void printCSV(File& fd, T x);
 template <typename Out> static void printFloat(Out& out, double number, int digits);
 
-/*template <typename T> static void printCSV(File& fd, T x) {
+template <typename T> static void printCSV(File& fd, T x) {
     fd.print(x);
     fd.print(";");
 }
@@ -36,14 +36,9 @@ template <typename Out> static void printFloat(Out& out, double number, int digi
 static void printCSV(File& fd, float x, int digits) {
     printFloat(fd, x, digits);
     fd.print(";");
-}*/
-
-static void printCSVfloat(File& fd, float x) {
-    printFloat(fd, x, digits);
-    fd.print(";");
 }
-static void printCSVfloat(File& fd, float x, int digits) {
-    printFloat(fd, x, digits);
+static void printCSVfloat(File& fd, float x) {
+    fd.print(x);
     fd.print(";");
 }
 static void printCSVint(File& fd, int x) {
@@ -54,7 +49,7 @@ static void printCSVuint16_t(File& fd, uint16_t x) {
     fd.print(x);
     fd.print(";");
 }
-static void printCSVchar(File& fd, char x) {
+static void printCSVchar(File& fd, char* x) {
     fd.print(x);
     fd.print(";");
 }
@@ -150,9 +145,9 @@ static void printBME(File& fd, Adafruit_BME280& bme, uint8_t bmeIdx) {
     printBMEValue(bmeIdx, "Pressure", pressure, "hPa");
     printBMEValue(bmeIdx, "Humidity", humidity, "%");
 
-    printCSVfloat(fd, temperature);
-    printCSVfloat(fd, pressure);
-    printCSVfloat(fd, humidity); 
+    printCSV(fd, temperature);
+    printCSV(fd, pressure);
+    printCSV(fd, humidity); 
 }
 
 //////////////  BME 0 & 1 ///// End ////////////////
@@ -194,17 +189,17 @@ static void printIMU(File& fd, MPU9250& IMU) {
     printIMUValue("MagY", by, "uT");
     printIMUValue("MagZ", bz, "uT");
             
-    printCSVfloat(fd, ax);
-    printCSVfloat(fd, ay);
-    printCSVfloat(fd, az);
+    printCSV(fd, ax);
+    printCSV(fd, ay);
+    printCSV(fd, az);
     
-    printCSVfloat(fd, rx);
-    printCSVfloat(fd, ry);
-    printCSVfloat(fd, rz);
+    printCSV(fd, rx);
+    printCSV(fd, ry);
+    printCSV(fd, rz);
     
-    printCSVfloat(fd, bx);
-    printCSVfloat(fd, by);
-    printCSVfloat(fd, bz); 
+    printCSV(fd, bx);
+    printCSV(fd, by);
+    printCSV(fd, bz); 
 }
 //////////////  IMU ///// End ////////////////
 
@@ -241,7 +236,6 @@ static void Light(File& fd){
   printLightValue("Light2", Light);
   printCSVint(fd, Light);
 }
-
 
 //////////////  GPS Data ///// Start ////////////////
 
@@ -312,10 +306,10 @@ static void gpsdump(File& fd) {
     }
     printCSVchar(fd, date);
     printCSVchar(fd, time);
-    printCSVfloat(fd, flat, 5);
-    printCSVfloat(fd, flon, 5);  
-    printCSVfloat(fd, altitude, 2);
-    printCSVfloat(fd, speed, 2);
+    printCSV(fd, flat, 5);
+    printCSV(fd, flon, 5);  
+    printCSV(fd, altitude, 2);
+    printCSV(fd, speed, 2);
     fd.print(satellites);
 }
 
@@ -428,7 +422,7 @@ void setup() {
             "GyroX_rads;GyroY_rads;GyroZ_rads;"
             "MagX_uT;MagY_uT;MagZ_uT;"
             "lux_lx;"
-            "Light"
+            "Light;"
             "millis_ms;"
             "Jahr/Monat/Tag;Stunden:Minuten:Sekunden;"
             "f_lat;f_lon;f_altitude;f_kmph;Sateliten"
