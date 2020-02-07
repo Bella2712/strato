@@ -1,3 +1,7 @@
+
+//libraries are needed to access the sensors easier 
+
+
 #include <TinyGPS.h>			// https://www.instructables.com/id/How-to-Communicate-Neo-6M-GPS-to-Arduino/
 #include <SoftwareSerial.h>		// Standart
 //#include <BH1750FVI.h>
@@ -72,7 +76,7 @@ template <typename Out> static void printFloat(Out& out, double number, uint8_t 
     }
 }
 
-static void generateFilename() {
+static void generateFilename() { // creats new file and figures out the file number
 	unsigned n = 0;
     do {
         snprintf(filename, sizeof(filename), "data%03d.csv", n); // includes a three-digit sequence number in the file name
@@ -83,7 +87,7 @@ static void generateFilename() {
     Serial.println(filename);
 }
 
-static void Runtime(File& fd) { 
+static void Runtime(File& fd) { 			// counts the time since start in ms
 	unsigned long runtime = millis();
 	Serial.print("Runtime = ");
 	Serial.println(runtime); 
@@ -91,30 +95,30 @@ static void Runtime(File& fd) {
 	fd.print(";");
 }
 
-static void hang() {
+static void hang() {			// if something doesn't work this function stopps the programm and activates both LEDs
     Serial.println("System halted.");
 	LED0_on();
     LED1_on();
     while (true);
 }
 
-static void LED0_on(){
+static void LED0_on(){			// activates LED0
 	digitalWrite(LED0, 0);  
 }
-static void LED1_on(){
+static void LED1_on(){			// activates LED1
     digitalWrite(LED1, 0);
 }
 
-static void LED0_off(){
+static void LED0_off(){			// deactivates LED0
 	digitalWrite(LED0, 1);
 }
-static void LED1_off(){
+static void LED1_off(){			// deactivates LED1
 	digitalWrite(LED1, 1);
 }
 
 //////////////  BME 0 & 1 ///// Start ////////////////
 
-static void printBMEValue(uint8_t bmeIdx, const char *name, float value, const char *unit) {
+static void printBMEValue(uint8_t bmeIdx, const char *name, float value, const char *unit) { // prints the data on the Serial Monitor to check the data 
 	Serial.print(name);
     Serial.print("_BME_");
     Serial.print(bmeIdx);
@@ -125,7 +129,7 @@ static void printBMEValue(uint8_t bmeIdx, const char *name, float value, const c
 }
 
 
-static void printBME(File& fd, Adafruit_BME280& bme, uint8_t bmeIdx) {
+static void printBME(File& fd, Adafruit_BME280& bme, uint8_t bmeIdx) { // reads and prints the BME data
 	float temperature = bme.readTemperature();
     float pressure = bme.readPressure() / 100.0f;
     float humidity = bme.readHumidity();
@@ -142,7 +146,7 @@ static void printBME(File& fd, Adafruit_BME280& bme, uint8_t bmeIdx) {
 //////////////  BME 0 & 1 ///// End ////////////////
 //////////////  IMU ///// Start ////////////////
 
-static void printIMUValue(const char* name, float value, const char *unit) {
+static void printIMUValue(const char* name, float value, const char *unit) { // prints the data on the Serial Monitor to check the data 
     Serial.print(name);
     Serial.print(" ");
     Serial.print("IMU");
@@ -152,7 +156,7 @@ static void printIMUValue(const char* name, float value, const char *unit) {
     Serial.println(unit);  
 }
 
-static void printIMU(File& fd, MPU9250& IMU) {
+static void printIMU(File& fd, MPU9250& IMU) { // reads and prints the IMU data
     IMU.readSensor();
     float ax = IMU.getAccelX_mss();
     float ay = IMU.getAccelY_mss();
@@ -260,7 +264,7 @@ static void gpsdump(File& fd) {
         (hour), /* UTC */
         minute, second, hundredths
 	); 
-
+    // prints the data on the Serial Monitor to check the data 
     Serial.print("Date: ");
     Serial.println(date);
     Serial.print("Time: ");
@@ -280,7 +284,7 @@ static void gpsdump(File& fd) {
     } else {
 		Serial.println("unknown");
 	}
-	
+	// prints the IMU data
     printCSV(fd, date);
     printCSV(fd, time);
     printCSV(fd, flat, 5);
@@ -379,7 +383,8 @@ static void setGPSFlightMode() {
 }
 //////////////  Flight Mode ///// End ///////////
 
-void setup() {
+void setup() //setup of the main programm 
+{				
 	pinMode (LED0, OUTPUT);
     pinMode (LED1, OUTPUT);
 
@@ -407,7 +412,7 @@ void setup() {
     }
 
     {
-        bool bme0Status = BME0.begin();  
+        bool bme0Status = BME0.begin();  //0x76
         bool bme1Status = BME1.begin(0x77);
         int statusIMU = IMU.begin();
         //LightSensor.begin();
@@ -431,12 +436,12 @@ void setup() {
     Serial.println("-- Default Test --");
 } // END setup
 
-void loop() { 
+void loop() //loop of the main programm
+{ 		
 	LED0_on();
     bool newdata = pollGPS();
     LED0_off();
-    // on = DigitalWrite(0), off = DigitalWrite(1)
-    
+        
     File fd = SD.open(filename, FILE_WRITE);    
     printBME(fd, BME0, 0);
     printBME(fd, BME1, 1);
