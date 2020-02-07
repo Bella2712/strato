@@ -219,7 +219,7 @@ static void printBH1750(File& fd) {
 
 //////////////  GPS Data ///// Start ////////////////
 
-static const size_t MAX_SIZE = 1024;
+static const size_t MAX_SIZE = 2048;
 static char raw_gps_data[MAX_SIZE];
 static size_t raw_gps_pos = 0;
 
@@ -233,9 +233,10 @@ static bool pollGPS() {
 			char c = gpsSerial.read();
 			raw_gps_data[raw_gps_pos++] = c;
 			if (c == '\n') {
-				while (raw_gps_pos--) {
-					Serial.print(c);
-				}
+        for (size_t i = 0; i < raw_gps_pos; ++i) {
+          Serial.print(raw_gps_data[i]);
+        }
+        raw_gps_pos = 0;
 			}
 			if (raw_gps_pos >= MAX_SIZE - 1) {
 				--raw_gps_pos;
