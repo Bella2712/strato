@@ -26,7 +26,7 @@ static void setGPSFlightMode();
 // Arduino tool does not generate forward declarations of template functions properly.
 // An explicit forward declaration preceding all executable code stops Arduino from these attempts. 
 template <typename T> static void printCSV(File& fd, T x);
-template <typename Out> static void printFloat(Out& out, double number, int digits);
+template <typename Out> static void printFloat(Out& out, double number, uint8_t digits);
 
 template <typename T> static void printCSV(File& fd, T x) {
     fd.print(x);
@@ -66,8 +66,9 @@ template <typename Out> static void printFloat(Out& out, double number, uint8_t 
     // Extract digits from the remainder one at a time
     while (digits-- > 0) {
         remainder *= 10.0;
-        uint8_t toPrint = (uint8_t) remainder;
-        out.print(toPrint);  
+        uint8_t digit = (uint8_t) remainder;
+		remainder -= digit;
+        out.print(digit);  
     }
 }
 
@@ -256,7 +257,7 @@ static void gpsdump(File& fd) {
     sprintf(date, "%04d/%02d/%02d", year, month, day);
     char time[12] = { 0 };
     sprintf(time, "%02d:%02d:%02d.%02d",
-        (hour + 1), /* UTC +01:00 Europe/Berlin */
+        (hour), /* UTC */
         minute, second, hundredths
 	); 
 
