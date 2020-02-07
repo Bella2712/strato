@@ -37,22 +37,6 @@ static void printCSV(File& fd, float x, int digits) {
     printFloat(fd, x, digits);
     fd.print(";");
 }
-static void printCSVfloat(File& fd, float x) {
-    fd.print(x);
-    fd.print(";");
-}
-static void printCSVint(File& fd, int x) {
-    fd.print(x);
-    fd.print(";");
-}
-static void printCSVuint16_t(File& fd, uint16_t x) {
-    fd.print(x);
-    fd.print(";");
-}
-static void printCSVchar(File& fd, char* x) {
-    fd.print(x);
-    fd.print(";");
-}
 
 template <typename Out> static void printFloat(Out& out, double number, int digits) {
   // Handle negative numbers
@@ -218,7 +202,7 @@ static void printBH1750(File& fd) {
     uint16_t lux = LightSensor.GetLightIntensity();
 
     printBH1750Value("Light", lux, "lx");
-    printCSVuint16_t(fd, lux);
+    printCSV(fd, lux);
 }
 //////////////  Light Sensor ///// End ////////////////
 static void printLightValue(const char *name, int value) {
@@ -236,6 +220,7 @@ static void Light(File& fd){
   printLightValue("Light2", Light);
   printCSVint(fd, Light);
 }
+
 
 //////////////  GPS Data ///// Start ////////////////
 
@@ -304,8 +289,8 @@ static void gpsdump(File& fd) {
     } else {
         Serial.println("unknown");
     }
-    printCSVchar(fd, date);
-    printCSVchar(fd, time);
+    printCSV(fd, date);
+    printCSV(fd, time);
     printCSV(fd, flat, 5);
     printCSV(fd, flon, 5);  
     printCSV(fd, altitude, 2);
@@ -405,6 +390,7 @@ void setup() {
     pinMode (LED0, OUTPUT);
     pinMode (LED1, OUTPUT);
     pinMode (A1, INPUT);
+
 
     Serial.begin(9600);
     gpsSerial.begin(9600);
