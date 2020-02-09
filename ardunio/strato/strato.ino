@@ -385,7 +385,7 @@ void setup() {
     pinMode (LED0, OUTPUT);
     pinMode (LED1, OUTPUT);
 
-    Serial.begin(9600);
+    Serial.begin(115200);
     gpsSerial.begin(9600);
     SD.begin(PB4);
 
