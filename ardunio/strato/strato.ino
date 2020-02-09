@@ -28,6 +28,26 @@ static void setGPSFlightMode();
 template <typename T> static void printCSV(File& fd, T x);
 template <typename Out> static void printFloat(Out& out, double number, uint8_t digits);
 
+/// Timer interrupt hacking.
+// We use 8-bit Timer2 of ATMEGA1284.
+// See datasheet, pp. 140-160
+static void setupTimerInterrupt() {
+    noInterrupts();
+    // Register-level configuration of TIMER2
+    TCCR2A = 0x00; // Normal mode
+    TCCR2B = 0x05; // Normal mode, 1:128 prescaler. This corresponds to approx. 500 events/sec.
+                   // See Table 15-9 in the datasheet for possible values.
+    // Unmask timer interrupt.
+    TIMSK2 = 0x01;
+    interrupts();
+}
+
+/// Timer interrupt function.
+// This function is called periodically approx. 500 times per second.
+// Keep it short. No I/O here!!! 
+ISR(TIMER2_OVF_vect) {
+}
+
 /// Write a number to CSV file.
 template <typename T> static void printCSV(File& fd, T x) {
     fd.print(x);
@@ -428,6 +448,8 @@ void setup() {
     }
 
     setGPSFlightMode();
+    setupTimerInterrupt(); // this must be AFTER setGpsFlightMode()
+                           // since we do GPS buffering within the interrupt handler
     Serial.println("-- Default Test --");
 }
 
