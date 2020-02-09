@@ -273,13 +273,16 @@ static void printIMU(File& fd, MPU9250& IMU) {
     printCSV(fd, bz); 
 }
 
-static bool pollGPS() {
+static bool pollGPS(const char* filename) {
     const unsigned long timeout = 5000; // milliseconds
     bool newdata = false;
 
     unsigned long start = millis();
     while (millis() - start < timeout) {
         if (gps_buffer.has_lines()) {
+            // We reopen file every line so that the file won't get corrupted
+            // if we can't write
+            File fd = SD.open(filename, FILE_WRITE);
             while (true) { // repeat until end of line
                 char c = gps_buffer.pop();
 
@@ -288,11 +291,13 @@ static bool pollGPS() {
                 }
 
                 Serial.print(c);
+                fd.print(c);
 
                 if (c == '\n') {
                     break; // end of line
                 }
             }
+            fd.close();
         }
         if (newdata) {
             break;
@@ -504,7 +509,7 @@ void setup() {
 /// Main loop
 void loop() {
     LED0_on();
-    bool newdata = pollGPS();
+    bool newdata = pollGPS(filename);
     LED0_off();
 
     File fd = SD.open(filename, FILE_WRITE);
