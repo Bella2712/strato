@@ -28,6 +28,76 @@ static void setGPSFlightMode();
 template <typename T> static void printCSV(File& fd, T x);
 template <typename Out> static void printFloat(Out& out, double number, uint8_t digits);
 
+/// Circular bufer for incoming GPS data.
+class CircularBuffer {
+public:
+    CircularBuffer() : read_pointer(0), write_pointer(0), newline_count(0) { }
+    /// Push byte into circular buffer. Usually called from interrupt handler.
+    inline void push(char c) {
+        this->buffer[this->write_pointer] = c;
+        this->write_pointer = (this->write_pointer + 1) % MAX_SIZE;
+        if (c == '\n') {
+            noInterrupts();
+            ++this->newline_count;
+            interrupts();
+        }
+    }
+    /// Check if the circular buffer contains whole lines.
+    inline bool has_lines() const {
+        noInterrupts();
+        bool x = this->newline_count > 0;
+        interrupts();
+        return x;
+    }
+    /// Read one byte.
+    inline char pop() {
+        char c = this->buffer[this->read_pointer];
+        this->read_pointer = (this->read_pointer + 1) % MAX_SIZE;
+        if (c == '\n') {
+            noInterrupts();
+            --this->newline_count;
+            interrupts();
+        }
+        return c;
+    }
+private:
+    static const uint16_t MAX_SIZE = 4096; // must be big, or else we may lose data
+    uint16_t read_pointer;
+    uint16_t write_pointer;
+    volatile uint8_t newline_count;
+    char buffer[MAX_SIZE];
+};
+
+static CircularBuffer gps_buffer;
+
+/// Timer interrupt hacking.
+// We use 8-bit Timer2 of ATMEGA1284.
+// See datasheet, pp. 140-160
+static void setupTimerInterrupt() {
+    noInterrupts();
+    // Register-level configuration of TIMER2
+    TCCR2A = 0x00; // Normal mode
+    TCCR2B = 0x05; // Normal mode, 1:128 prescaler. This corresponds to approx. 500 events/sec.
+                   // See Table 15-9 in the datasheet for possible values.
+    // Unmask timer interrupt.
+    TIMSK2 = 0x01;
+    interrupts();
+}
+
+/// Timer interrupt function.
+// This function is called periodically approx. 500 times per second.
+// Keep it short. No I/O here!!! 
+//
+// The internal Arduino circular bufer has 64 bytes.
+// At 9600 baud this would overflow in a 1/150 second.
+// Here we pull data approx. every 1/500 second into a larger buffer
+// protecting the internal one from overflow.
+ISR(TIMER2_OVF_vect) {
+    while (gpsSerial.available()) {
+        gps_buffer.push(gpsSerial.read());
+    }
+}
+
 /// Write a number to CSV file.
 template <typename T> static void printCSV(File& fd, T x) {
     fd.print(x);
@@ -203,32 +273,34 @@ static void printIMU(File& fd, MPU9250& IMU) {
     printCSV(fd, bz); 
 }
 
-static const size_t MAX_SIZE = 2048;
-static char raw_gps_data[MAX_SIZE];
-static size_t raw_gps_pos = 0;
-
-static bool pollGPS() {
+static bool pollGPS(const char* filename) {
     const unsigned long timeout = 5000; // milliseconds
     bool newdata = false;
 
     unsigned long start = millis();
     while (millis() - start < timeout) {
-        if (gpsSerial.available()) {
-            char c = gpsSerial.read();
-            raw_gps_data[raw_gps_pos++] = c;
-            if (c == '\n') {
-                for (size_t i = 0; i < raw_gps_pos; ++i) {
-                  Serial.print(raw_gps_data[i]);
-                }
-                raw_gps_pos = 0;
-            }
-            if (raw_gps_pos >= MAX_SIZE - 1) {
-                --raw_gps_pos;
-            }
-            if (gpsDecoder.encode(c)) {
+        if (gps_buffer.has_lines()) {
+            // We reopen file every line so that the file won't get corrupted
+            // if we can't write
+            File fd = SD.open(filename, FILE_WRITE);
+            while (true) { // repeat until end of line
+                char c = gps_buffer.pop();
+
+                if (gpsDecoder.encode(c)) {
                     newdata = true;
-                    break;  // uncomment to print new data immediately!
+                }
+
+                Serial.print(c);
+                fd.print(c);
+
+                if (c == '\n') {
+                    break; // end of line
+                }
             }
+            fd.close();
+        }
+        if (newdata) {
+            break;
         }
     }
 
@@ -428,6 +500,8 @@ void setup() {
     }
 
     setGPSFlightMode();
+    setupTimerInterrupt(); // this must be AFTER setGpsFlightMode()
+                           // since we do GPS buffering within the interrupt handler
     Serial.println("-- Default Test --");
 }
 
@@ -435,7 +509,7 @@ void setup() {
 /// Main loop
 void loop() {
     LED0_on();
-    bool newdata = pollGPS();
+    bool newdata = pollGPS(filename);
     LED0_off();
 
     File fd = SD.open(filename, FILE_WRITE);
